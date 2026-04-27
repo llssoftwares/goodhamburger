@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/backend/">
+    <Project Path="src/GoodHamburger.Api/GoodHamburger.Api.csproj" />
+    <Project Path="src/GoodHamburger.Application/GoodHamburger.Application.csproj" />
+    <Project Path="src/GoodHamburger.Domain/GoodHamburger.Domain.csproj" Id="e055f792-367c-4914-aac4-37ea83624cd6" />
+    <Project Path="src/GoodHamburger.Infrastructure/GoodHamburger.Infrastructure.csproj" Id="ffab5793-6075-422f-af27-ee651371dece" />
+  </Folder>
+  <Folder Name="/src/backend/aspire/">
+    <Project Path="src/GoodHamburger.AppHost/GoodHamburger.AppHost.csproj" />
+    <Project Path="src/GoodHamburger.ServiceDefaults/GoodHamburger.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/frontend/">
+    <Project Path="src/GoodHamburger.Web/GoodHamburger.Web.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/GoodHamburger.Tests/GoodHamburger.Tests.csproj" />
+  </Folder>
+</Solution>
