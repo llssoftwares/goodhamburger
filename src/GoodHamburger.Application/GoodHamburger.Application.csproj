@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GoodHamburger.Domain\GoodHamburger.Domain.csproj" />
+    <ProjectReference Include="..\GoodHamburger.Infrastructure\GoodHamburger.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
