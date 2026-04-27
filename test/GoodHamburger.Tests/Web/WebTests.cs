@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace GoodHamburger.Tests;
+namespace GoodHamburger.Tests.Web;
 
 public class WebTests
 {
@@ -13,11 +13,11 @@ public class WebTests
         var cancellationToken = TestContext.Current.CancellationToken;
 
         var appHost = await DistributedApplicationTestingBuilder.CreateAsync<Projects.GoodHamburger_AppHost>(cancellationToken);
-        
+
         appHost.Services.AddLogging(logging =>
         {
             logging.SetMinimumLevel(LogLevel.Debug);
-            
+
             logging.AddFilter(appHost.Environment.ApplicationName, LogLevel.Debug);
             logging.AddFilter("Aspire.", LogLevel.Debug);            
         });
