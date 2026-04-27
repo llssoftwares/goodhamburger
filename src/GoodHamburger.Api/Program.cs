@@ -4,6 +4,7 @@ using GoodHamburger.Api.Features.Orders;
 using GoodHamburger.Infrastructure.Data;
 using GoodHamburger.ServiceDefaults;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,7 @@ app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseCors("AllowAll");
