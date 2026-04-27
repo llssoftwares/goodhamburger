@@ -1,0 +1,359 @@
+@page "/"
+@rendermode InteractiveServer
+@inject MenuClient MenuClient
+@inject OrderClient OrderClient
+@inject ILogger<Orders> Logger
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1>Pedidos</h1>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Novo Pedido</h5>
+                </div>
+                <div class="card-body">
+                    @if (menu == null)
+                    {
+                        <p><em>Carregando cardápio...</em></p>
+                    }
+                    else if (menu.Count == 0)
+                    {
+                        <p class="text-danger">Nenhum item disponível no cardápio.</p>
+                    }
+                    else
+                    {
+                        <form @onsubmit="CreateOrder">
+                            <div class="mb-3">
+                                <label class="form-label">Selecione os itens:</label>
+                                @foreach (var item in menu)
+                                {
+                                    <div class="form-check">
+                                        <input 
+                                            class="form-check-input" 
+                                            type="checkbox" 
+                                            id="item_@item.Id" 
+                                            checked="@IsChecked(item)"
+                                            @onchange="@((ChangeEventArgs e) => ToggleItem(item, (bool)e.Value!))"
+                                            disabled="@(!IsItemValid(item))" />                                        
+                                        <label class="form-check-label" for="item_@item.Id">
+                                            @item.Name - R$ @item.Price.ToString("F2")
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (validationErrors.Any())
+                            {
+                                <div class="alert alert-danger">
+                                    <ul class="mb-0">
+                                        @foreach (var error in validationErrors)
+                                        {
+                                            <li>@error</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            @if (currentOrder.Items.Any())
+                            {
+                                <div class="alert alert-info">
+                                    <h6>Resumo do Pedido:</h6>
+                                    <ul class="mb-2">
+                                        @foreach (var item in currentOrder.Items)
+                                        {
+                                            <li>@item.Name - R$ @item.Price.ToString("F2")</li>
+                                        }
+                                    </ul>
+                                    <hr />
+                                    <p><strong>Subtotal:</strong> R$ @currentOrder.Subtotal.ToString("F2")</p>
+                                    @if (currentOrder.DiscountPercentage > 0)
+                                    {
+                                        <p class="text-success">
+                                            <strong>Desconto (@currentOrder.DiscountPercentage%):</strong> -R$ @currentOrder.Discount.ToString("F2")
+                                        </p>
+                                    }
+                                    <p class="fs-5"><strong>Total: R$ @currentOrder.Total.ToString("F2")</strong></p>
+                                </div>
+
+                                <button type="submit" class="btn btn-success" disabled="@(isLoading || !currentOrder.Items.Any())">
+                                    @if (isLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        <span>Criando pedido...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Criar Pedido</span>
+                                    }
+                                </button>
+                                <button type="button" class="btn btn-secondary" @onclick="ClearOrder">Limpar</button>
+                            }
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Pedidos Recentes</h5>
+                </div>
+                <div class="card-body">
+                    @if (orders == null)
+                    {
+                        <p><em>Carregando pedidos...</em></p>
+                    }
+                    else if (orders.Count == 0)
+                    {
+                        <p>Nenhum pedido criado ainda.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Total</th>
+                                        <th>Desconto</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var order in orders.Take(10))
+                                    {
+                                        <tr @onclick="@(() => SelectOrder(order))" style="cursor: pointer;" class="@(selectedOrder?.Id == order.Id ? "table-active" : "")">
+                                            <td>@order.Id</td>
+                                            <td>R$ @order.Total.ToString("F2")</td>
+                                            <td>@(order.DiscountPercentage > 0 ? order.DiscountPercentage + "%" : "-")</td>
+                                            <td>@order.Status</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (selectedOrder != null)
+                        {
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <h6>Detalhes do Pedido #@selectedOrder.Id</h6>
+                                <p><strong>Data:</strong> @selectedOrder.CreatedAt.ToString("g")</p>
+                                <p><strong>Status:</strong> @selectedOrder.Status</p>
+                                <hr />
+                                <h6>Itens:</h6>
+                                <ul>
+                                    @foreach (var item in selectedOrder.Items)
+                                    {
+                                        <li>@item.MenuItemName (R$ @item.UnitPrice.ToString("F2")) x @item.Quantity</li>
+                                    }
+                                </ul>
+                                <hr />
+                                <p><strong>Subtotal:</strong> R$ @selectedOrder.Subtotal.ToString("F2")</p>
+                                @if (selectedOrder.DiscountPercentage > 0)
+                                {
+                                    <p class="text-success">
+                                        <strong>Desconto (@selectedOrder.DiscountPercentage%):</strong> -R$ @selectedOrder.Discount.ToString("F2")
+                                    </p>
+                                }
+                                <p class="fs-5"><strong>Total: R$ @selectedOrder.Total.ToString("F2")</strong></p>
+
+                                @if (selectedOrder.Status == "Created")
+                                {
+                                    <button class="btn btn-danger btn-sm" @onclick="DeleteOrder">Deletar Pedido</button>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<MenuItemDto> menu = new();
+    private List<OrderDto> orders = new();
+    private OrderDto? selectedOrder;
+    private bool isLoading = false;
+    private List<string> validationErrors = new();
+
+    private class OrderCreationModel
+    {
+        public List<MenuItemDto> Items { get; set; } = new();
+        public decimal Subtotal { get; set; }
+        public decimal DiscountPercentage { get; set; }
+        public decimal Discount { get; set; }
+        public decimal Total { get; set; }
+    }
+
+    private OrderCreationModel currentOrder = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            menu = await MenuClient.GetMenuAsync() ?? new();
+            await RefreshOrders();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Erro ao carregar dados iniciais");
+        }
+    }
+
+    private async Task RefreshOrders()
+    {
+        try
+        {
+            orders = await OrderClient.GetOrdersAsync() ?? new();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Erro ao carregar pedidos");
+        }
+    }
+
+    private bool IsItemValid(MenuItemDto item)
+    {
+        var itemType = item.Type;
+        var hasItem = currentOrder.Items.Any(i => i.Type == itemType);
+        var hasSandwich = currentOrder.Items.Any(i => i.Type == "Sandwich");
+
+        return !hasItem || (itemType == "Sandwich" && !hasSandwich);
+    }
+
+    private bool IsChecked(MenuItemDto item)
+    {
+        return currentOrder.Items.Any(i => i.Id == item.Id);
+    }
+
+    private void ToggleItem(MenuItemDto item, bool selected)
+    {
+        if (selected)
+        {
+            var existing = currentOrder.Items.FirstOrDefault(i => i.Type == item.Type);
+            if (existing != null)
+            {
+                currentOrder.Items.Remove(existing);
+            }
+            currentOrder.Items.Add(item);
+        }
+        else
+        {
+            currentOrder.Items.RemoveAll(i => i.Id == item.Id);
+        }
+
+        CalculateOrder();
+    }
+
+    private void CalculateOrder()
+    {
+        validationErrors.Clear();
+        currentOrder.Subtotal = currentOrder.Items.Sum(i => i.Price);
+
+        if (currentOrder.Items.Count == 3)
+        {
+            currentOrder.DiscountPercentage = 20;
+        }
+        else if (currentOrder.Items.Count == 2)
+        {
+            var hasSandwich = currentOrder.Items.Any(i => i.Type == "Sandwich");
+            var hasSide = currentOrder.Items.Any(i => i.Type == "Side");
+            var hasBeverage = currentOrder.Items.Any(i => i.Type == "Beverage");
+
+            if (hasSandwich && hasBeverage)
+                currentOrder.DiscountPercentage = 15;
+            else if (hasSandwich && hasSide)
+                currentOrder.DiscountPercentage = 10;
+            else
+                currentOrder.DiscountPercentage = 0;
+        }
+        else
+        {
+            currentOrder.DiscountPercentage = 0;
+        }
+
+        currentOrder.Discount = currentOrder.Subtotal * (currentOrder.DiscountPercentage / 100m);
+        currentOrder.Total = currentOrder.Subtotal - currentOrder.Discount;
+    }
+
+    private async Task CreateOrder()
+    {
+        if (!currentOrder.Items.Any())
+        {
+            validationErrors.Add("Selecione pelo menos um item.");
+            return;
+        }
+
+        isLoading = true;
+        validationErrors.Clear();
+
+        try
+        {
+            var request = new CreateOrderRequest(
+                currentOrder.Items.Select(i => new CreateOrderItemRequest(i.Id, 1)).ToList()
+            );
+
+            var (order, errors) = await OrderClient.CreateOrderAsync(request);
+
+            if (errors.Any())
+            {
+                validationErrors.AddRange(errors);
+            }
+            else
+            {
+                ClearOrder();
+                await RefreshOrders();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Erro ao criar pedido");
+            validationErrors.Add("Erro ao criar pedido. Tente novamente.");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ClearOrder()
+    {
+        currentOrder = new OrderCreationModel();
+        validationErrors.Clear();
+        selectedOrder = null;
+
+        StateHasChanged();
+    }
+
+    private void SelectOrder(OrderDto order)
+    {
+        selectedOrder = order;
+    }
+
+    private async Task DeleteOrder()
+    {
+        if (selectedOrder == null) return;
+
+        try
+        {
+            var success = await OrderClient.DeleteOrderAsync(selectedOrder.Id);
+            if (success)
+            {
+                selectedOrder = null;
+                await RefreshOrders();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Erro ao deletar pedido");
+        }
+    }
+}
